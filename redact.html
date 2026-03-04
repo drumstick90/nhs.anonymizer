@@ -864,18 +864,18 @@ function loadSample() {
   document.getElementById('ptSurname').value='Whitfield';
   document.getElementById('clinicianName').value='Dr Elena Marchetti';
   document.getElementById('nhsNumber').value='943 476 5919';
-  extraNames=['Dr Patel']; renderChips();
+  extraNames=['Dr Mockup']; renderChips();
   inputEl.value=`OPA Clinic Letter — Community Mental Health Team
 
-Patient: James Whitfield (NHS: 943 476 5919)
-DOB: 14/03/1985
+Patient: Jane Doe (NHS: 999 999 9999)
+DOB: 14/03/1905
 Address: 27 Elmwood Drive, London W12 8QT
 
-Dear Dr Patel,
+Dear Dr Mockup,
 
-Thank you for referring Mr Whitfield to our service. I reviewed James in clinic today accompanied by his partner. Mr Whitfield reports persistent low mood, anhedonia, and early morning waking over the past 6 months.
+Thank you for referring Ms Doe to our service. I reviewed Jane in clinic today accompanied by her partner. Ms Doe reports persistent low mood, anhedonia, and early morning waking over the past 6 months.
 
-James was previously seen by Dr Elena Marchetti at the Hammersmith CMHT in 2022. He was trialled on sertraline 100mg with partial response. His GP can be reached at dr.patel@nhs.net or 020 7946 0958.
+Jane was previously seen by Dr Mockdown at the Hammersmith CMHT in 2022. She was trialled on sertraline 100mg with partial response. Her GP can be reached at dr.mockup@nhs.net or 020 7946 0958.
 
 Current medications: Sertraline 150mg OD, Zopiclone 7.5mg PRN.
 
@@ -883,10 +883,10 @@ Plan:
 1. Increase sertraline to 200mg
 2. Refer for CBT via IAPT
 3. Review in 6 weeks — Whitfield to contact clinic if deterioration
-4. Copy of this letter sent to james.whitfield@gmail.com
+4. Copy of this letter sent to jane.done@gmail.com
 
 Yours sincerely,
-Dr Elena Marchetti
+Dr Mockthree
 Consultant Psychiatrist`;
   document.getElementById('charCount').textContent=inputEl.value.length.toLocaleString()+' characters';
   showToast('Sample loaded — hit Redact');
