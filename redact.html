@@ -1,0 +1,896 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Redact — Clinical Note Anonymiser</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #f6f4f0;
+    --white: #ffffff;
+    --surface: #ffffff;
+    --surface-alt: #f0eee9;
+    --surface-hover: #eae7e1;
+    --border: #d8d3ca;
+    --border-subtle: #e5e1da;
+    --border-strong: #c4bfb5;
+    --nhs-blue: #005EB8;
+    --nhs-blue-soft: rgba(0, 94, 184, 0.08);
+    --nhs-blue-hover: #0070d6;
+    --gold: #9a7b3a;
+    --gold-dim: rgba(154, 123, 58, 0.08);
+    --gold-border: rgba(154, 123, 58, 0.2);
+    --red: #b5291a;
+    --red-soft: rgba(181, 41, 26, 0.06);
+    --red-tag: #c0392b;
+    --green: #1a7a42;
+    --green-soft: rgba(26, 122, 66, 0.07);
+    --amber: #a06b00;
+    --amber-soft: rgba(160, 107, 0, 0.07);
+    --purple: #6b3fa0;
+    --purple-soft: rgba(107, 63, 160, 0.06);
+    --text: #1a1a1a;
+    --text-secondary: #555555;
+    --text-dim: #8a8580;
+    --text-placeholder: #b0aaa0;
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --sans: 'DM Sans', -apple-system, sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 36px 24px 56px;
+  }
+
+  /* ═══ MASTHEAD ═══ */
+  .masthead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 20px;
+    margin-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+  }
+  .masthead-left {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+  .logo {
+    font-family: var(--serif);
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 0.3px;
+  }
+  .logo span { color: var(--nhs-blue); }
+  .version {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    border: 1px solid var(--border);
+    padding: 2px 8px;
+    border-radius: 3px;
+    background: var(--surface);
+  }
+  .security-badge {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--green);
+    background: var(--green-soft);
+    padding: 5px 11px;
+    border-radius: 3px;
+    font-weight: 600;
+    border: 1px solid rgba(26, 122, 66, 0.12);
+  }
+  .security-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: var(--green);
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ═══ STEPS ═══ */
+  .step { margin-bottom: 28px; }
+  .step-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .step-num {
+    width: 23px; height: 23px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--nhs-blue);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .step-title {
+    font-family: var(--serif);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .step-subtitle {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-left: auto;
+    font-weight: 500;
+  }
+
+  /* ═══ CARD ═══ */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 20px;
+  }
+
+  /* ═══ FIELDS ═══ */
+  .field-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .field-grid .span-2 { grid-column: 1 / -1; }
+
+  .field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  .field input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    padding: 9px 12px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .field input:focus {
+    border-color: var(--nhs-blue);
+    box-shadow: 0 0 0 3px var(--nhs-blue-soft);
+  }
+  .field input::placeholder { color: var(--text-placeholder); }
+
+  /* ═══ EXTRA NAMES ═══ */
+  .names-input-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .names-input-row input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    padding: 9px 12px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .names-input-row input:focus {
+    border-color: var(--nhs-blue);
+    box-shadow: 0 0 0 3px var(--nhs-blue-soft);
+  }
+  .names-input-row input::placeholder { color: var(--text-placeholder); }
+
+  .btn-add {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--nhs-blue);
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 0 16px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+  }
+  .btn-add:hover {
+    background: var(--nhs-blue-soft);
+    border-color: var(--nhs-blue);
+  }
+
+  .name-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--gold-dim);
+    border: 1px solid var(--gold-border);
+    border-radius: 3px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gold);
+  }
+  .chip-remove {
+    cursor: pointer;
+    color: var(--text-dim);
+    font-size: 14px;
+    line-height: 1;
+    transition: color 0.15s;
+  }
+  .chip-remove:hover { color: var(--red); }
+
+  /* ═══ OPTIONS ═══ */
+  .options-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 16px;
+    padding: 10px 12px;
+    background: var(--surface-alt);
+    border: 1px solid var(--border-subtle);
+    border-radius: 4px;
+  }
+  .opt {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s;
+  }
+  .opt:hover { background: var(--surface-hover); }
+  .opt input[type="checkbox"] {
+    appearance: none;
+    width: 15px; height: 15px;
+    border: 1.5px solid var(--border-strong);
+    border-radius: 3px;
+    background: var(--white);
+    cursor: pointer;
+    position: relative;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .opt input[type="checkbox"]:checked {
+    background: var(--nhs-blue);
+    border-color: var(--nhs-blue);
+  }
+  .opt input[type="checkbox"]:checked::after {
+    content: '';
+    position: absolute;
+    top: 2px; left: 4px;
+    width: 5px; height: 7px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+
+  /* ═══ TEXTAREA ═══ */
+  textarea {
+    width: 100%;
+    min-height: 240px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.8;
+    padding: 16px 18px;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  textarea:focus {
+    border-color: var(--nhs-blue);
+    box-shadow: 0 0 0 3px var(--nhs-blue-soft);
+  }
+  textarea::placeholder { color: var(--text-placeholder); }
+
+  .textarea-meta {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .textarea-meta kbd {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 1px 6px;
+    font-family: var(--sans);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
+  /* ═══ ACTIONS ═══ */
+  .action-bar {
+    display: flex;
+    gap: 8px;
+    margin-top: 20px;
+    align-items: center;
+  }
+  .btn-redact {
+    background: var(--nhs-blue);
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 11px 32px;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 1px 3px rgba(0, 94, 184, 0.2);
+  }
+  .btn-redact:hover {
+    background: var(--nhs-blue-hover);
+    box-shadow: 0 4px 12px rgba(0, 94, 184, 0.25);
+    transform: translateY(-1px);
+  }
+  .btn-redact:active { transform: translateY(0); box-shadow: 0 1px 3px rgba(0, 94, 184, 0.2); }
+
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text-secondary);
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 10px 18px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-ghost:hover {
+    border-color: var(--border-strong);
+    color: var(--text);
+    background: var(--surface);
+  }
+  .action-spacer { flex: 1; }
+
+  /* ═══ OUTPUT ═══ */
+  .output-panel {
+    display: none;
+    margin-top: 36px;
+    animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .output-panel.visible { display: block; }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .stats-ribbon {
+    display: flex;
+    gap: 1px;
+    margin-bottom: 16px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: var(--border);
+  }
+  .stat-cell {
+    flex: 1;
+    padding: 12px 12px 10px;
+    background: var(--surface);
+    text-align: center;
+    border-top: 3px solid transparent;
+  }
+  .stat-cell.active { border-top-color: var(--nhs-blue); }
+  .stat-cell.warning { border-top-color: var(--amber); }
+  .stat-val {
+    font-size: 22px;
+    font-weight: 700;
+    font-family: var(--serif);
+    color: var(--text);
+    line-height: 1.2;
+  }
+  .stat-cell.active .stat-val { color: var(--nhs-blue); }
+  .stat-cell.warning .stat-val { color: var(--amber); }
+  .stat-label {
+    font-size: 9.5px;
+    font-weight: 700;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .output-doc {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 22px 24px;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.85;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    color: var(--text);
+    max-height: 520px;
+    overflow-y: auto;
+  }
+  .output-doc::-webkit-scrollbar { width: 6px; }
+  .output-doc::-webkit-scrollbar-track { background: transparent; }
+  .output-doc::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* Colour-coded tags */
+  .tag-name {
+    background: var(--red-soft);
+    color: var(--red-tag);
+    padding: 1px 7px;
+    border-radius: 3px;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    border: 1px solid rgba(192, 57, 43, 0.15);
+  }
+  .tag-nhs {
+    background: var(--nhs-blue-soft);
+    color: var(--nhs-blue);
+    padding: 1px 7px;
+    border-radius: 3px;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    border: 1px solid rgba(0, 94, 184, 0.12);
+  }
+  .tag-email, .tag-phone {
+    background: var(--amber-soft);
+    color: var(--amber);
+    padding: 1px 7px;
+    border-radius: 3px;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    border: 1px solid rgba(160, 107, 0, 0.12);
+  }
+  .tag-dob, .tag-postcode, .tag-address {
+    background: var(--purple-soft);
+    color: var(--purple);
+    padding: 1px 7px;
+    border-radius: 3px;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    border: 1px solid rgba(107, 63, 160, 0.12);
+  }
+
+  .output-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  /* ═══ TOAST ═══ */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--nhs-blue);
+    border-radius: 5px;
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 100;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  .divider {
+    height: 1px;
+    background: var(--border-subtle);
+    margin: 4px 0 28px;
+  }
+
+  .footer {
+    margin-top: 44px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-subtle);
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  @media (max-width: 640px) {
+    .app { padding: 20px 16px 40px; }
+    .masthead { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .field-grid { grid-template-columns: 1fr; }
+    .stats-ribbon { flex-wrap: wrap; }
+    .stat-cell { min-width: calc(33% - 1px); }
+    .action-bar { flex-wrap: wrap; }
+    .btn-redact { width: 100%; text-align: center; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="masthead">
+    <div class="masthead-left">
+      <div class="logo">Re<span>d</span>act</div>
+      <span class="version">v2.0</span>
+    </div>
+    <div class="security-badge">Local only — nothing leaves this device</div>
+  </header>
+
+  <!-- STEP 1 -->
+  <section class="step">
+    <div class="step-header">
+      <div class="step-num">1</div>
+      <div class="step-title">Known Identifiers</div>
+      <div class="step-subtitle">Who are we scrubbing?</div>
+    </div>
+    <div class="card">
+      <div class="field-grid">
+        <div class="field">
+          <label>Patient First Name</label>
+          <input type="text" id="ptFirstName" placeholder="James" spellcheck="false" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label>Patient Surname</label>
+          <input type="text" id="ptSurname" placeholder="Whitfield" spellcheck="false" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label>Clinician / Author</label>
+          <input type="text" id="clinicianName" placeholder="Dr Sarah Jones" spellcheck="false" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label>NHS Number</label>
+          <input type="text" id="nhsNumber" placeholder="943 476 5919" spellcheck="false" autocomplete="off" />
+        </div>
+        <div class="field span-2">
+          <label>Additional Names <span style="color:var(--text-dim);text-transform:none;font-weight:400;letter-spacing:0">— GPs, relatives, ward staff</span></label>
+          <div class="names-input-row">
+            <input type="text" id="extraNameInput" placeholder="Type a name and press Enter" spellcheck="false" autocomplete="off" />
+            <button class="btn-add" onclick="addExtraName()">Add</button>
+          </div>
+          <div class="name-chips" id="nameChips"></div>
+        </div>
+      </div>
+      <div class="options-bar">
+        <label class="opt"><input type="checkbox" id="optEmails" checked /> Emails</label>
+        <label class="opt"><input type="checkbox" id="optNHS" checked /> NHS Numbers</label>
+        <label class="opt"><input type="checkbox" id="optPhones" checked /> Phone Numbers</label>
+        <label class="opt"><input type="checkbox" id="optDOB" checked /> Dates of Birth</label>
+        <label class="opt"><input type="checkbox" id="optPostcodes" checked /> UK Postcodes</label>
+        <label class="opt"><input type="checkbox" id="optAddresses" /> Addresses</label>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- STEP 2 -->
+  <section class="step">
+    <div class="step-header">
+      <div class="step-num">2</div>
+      <div class="step-title">Clinical Notes</div>
+      <div class="step-subtitle">Paste one or many</div>
+    </div>
+    <textarea id="inputText" placeholder="Paste clinical notes here — OPA letters, discharge summaries, referrals, CTO reviews..."></textarea>
+    <div class="textarea-meta">
+      <span id="charCount">0 characters</span>
+      <span><kbd>Ctrl</kbd> + <kbd>Enter</kbd> to redact</span>
+    </div>
+  </section>
+
+  <div class="action-bar">
+    <button class="btn-redact" onclick="redact()">Redact Document</button>
+    <button class="btn-ghost" onclick="loadSample()">Load Sample</button>
+    <div class="action-spacer"></div>
+    <button class="btn-ghost" onclick="clearAll()">Clear All</button>
+  </div>
+
+  <!-- STEP 3: OUTPUT -->
+  <div class="output-panel" id="outputPanel">
+    <div class="divider" style="margin-top:32px"></div>
+    <section class="step">
+      <div class="step-header">
+        <div class="step-num">3</div>
+        <div class="step-title">Redacted Output</div>
+      </div>
+      <div class="stats-ribbon">
+        <div class="stat-cell active">
+          <div class="stat-val" id="statTotal">0</div>
+          <div class="stat-label">Total</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-val" id="statNames">0</div>
+          <div class="stat-label">Names</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-val" id="statEmails">0</div>
+          <div class="stat-label">Emails</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-val" id="statNHS">0</div>
+          <div class="stat-label">NHS #</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-val" id="statPhones">0</div>
+          <div class="stat-label">Phones</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-val" id="statOther">0</div>
+          <div class="stat-label">Other</div>
+        </div>
+        <div class="stat-cell warning" id="warnCell" style="display:none">
+          <div class="stat-val" id="statWarnings">0</div>
+          <div class="stat-label">Review</div>
+        </div>
+      </div>
+      <div class="output-doc" id="outputDoc"></div>
+      <div class="output-actions">
+        <button class="btn-ghost" onclick="copyPlain()">Copy Plain Text</button>
+        <button class="btn-ghost" onclick="copyRich()">Copy Formatted</button>
+      </div>
+    </section>
+  </div>
+
+  <footer class="footer">
+    <span>Regex-based anonymisation. Always validate output before sharing.</span>
+    <span>No cookies · No telemetry · No server</span>
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let extraNames = [];
+let lastPlainOutput = '';
+
+const inputEl = document.getElementById('inputText');
+inputEl.addEventListener('input', () => {
+  const n = inputEl.value.length;
+  document.getElementById('charCount').textContent = n.toLocaleString() + ' character' + (n !== 1 ? 's' : '');
+});
+
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); redact(); }
+});
+
+document.getElementById('extraNameInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addExtraName();
+});
+
+function addExtraName() {
+  const input = document.getElementById('extraNameInput');
+  const name = input.value.trim();
+  if (name && !extraNames.includes(name)) { extraNames.push(name); renderChips(); }
+  input.value = ''; input.focus();
+}
+
+function removeExtraName(idx) { extraNames.splice(idx, 1); renderChips(); }
+
+function renderChips() {
+  document.getElementById('nameChips').innerHTML = extraNames.map((n, i) =>
+    `<span class="chip">${esc(n)}<span class="chip-remove" onclick="removeExtraName(${i})">×</span></span>`
+  ).join('');
+}
+
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function redact() {
+  const text = inputEl.value;
+  if (!text.trim()) { showToast('Paste some clinical notes first'); return; }
+
+  let output = text;
+  let c = { names:0, emails:0, nhs:0, phones:0, dob:0, postcodes:0, addresses:0 };
+
+  const names = [];
+  const ptFirst = document.getElementById('ptFirstName').value.trim();
+  const ptLast = document.getElementById('ptSurname').value.trim();
+  const clinician = document.getElementById('clinicianName').value.trim();
+
+  if (ptFirst) names.push(ptFirst);
+  if (ptLast) names.push(ptLast);
+  if (ptFirst && ptLast) {
+    names.push(ptFirst+' '+ptLast, ptLast+' '+ptFirst, ptLast+', '+ptFirst,
+      ptFirst.charAt(0)+'. '+ptLast, ptFirst.charAt(0)+' '+ptLast);
+    ['Mr','Mrs','Ms','Miss','Dr','Prof'].forEach(t => {
+      names.push(t+' '+ptLast, t+' '+ptFirst+' '+ptLast);
+    });
+  }
+  if (clinician) {
+    names.push(clinician);
+    clinician.split(/\s+/).forEach(p => {
+      if (p.length > 2 && !['dr','dr.','mr','mr.','mrs','mrs.','ms','ms.','miss','prof','prof.'].includes(p.toLowerCase())) names.push(p);
+    });
+  }
+  extraNames.forEach(n => { names.push(n); n.split(/\s+/).forEach(p => { if (p.length > 2) names.push(p); }); });
+
+  // Known NHS
+  const nhsRaw = document.getElementById('nhsNumber').value.replace(/\s+/g,'').trim();
+  if (nhsRaw) {
+    const pat = nhsRaw.split('').join('[\\s\\-]*');
+    output = output.replace(new RegExp(pat,'g'), () => { c.nhs++; return '\x00NHS\x01'; });
+  }
+  // Auto NHS
+  if (document.getElementById('optNHS').checked) {
+    output = output.replace(/\b\d{3}[\s\-]?\d{3}[\s\-]?\d{4}\b/g, m => {
+      if (m.replace(/\D/g,'').length===10 && !m.includes('\x00')) { c.nhs++; return '\x00NHS\x01'; }
+      return m;
+    });
+  }
+  // Emails
+  if (document.getElementById('optEmails').checked)
+    output = output.replace(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g, () => { c.emails++; return '\x00EMAIL\x01'; });
+  // Phones
+  if (document.getElementById('optPhones').checked)
+    output = output.replace(/(?:\+44|0)[\s\-]?\d{2,5}[\s\-]?\d{3,4}[\s\-]?\d{3,4}\b/g, () => { c.phones++; return '\x00PHONE\x01'; });
+  // DOB
+  if (document.getElementById('optDOB').checked)
+    output = output.replace(/((?:d\.?o\.?b\.?|date\s*of\s*birth)\s*[:=]?\s*)(\d{1,2}[\/.\\-]\d{1,2}[\/.\\-]\d{2,4})/gi, (m,pre) => { c.dob++; return pre+'\x00DOB\x01'; });
+  // Postcodes
+  if (document.getElementById('optPostcodes').checked)
+    output = output.replace(/\b[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}\b/gi, () => { c.postcodes++; return '\x00POSTCODE\x01'; });
+  // Addresses
+  if (document.getElementById('optAddresses').checked)
+    output = output.replace(/\b\d{1,4}\s+[A-Z][a-z]+(?:\s+(?:Street|St|Road|Rd|Avenue|Ave|Lane|Ln|Drive|Dr|Close|Cl|Crescent|Cres|Way|Court|Ct|Place|Pl|Terrace|Grove|Park|Gardens?))\b\.?/gi, () => { c.addresses++; return '\x00ADDRESS\x01'; });
+  // Names (longest first)
+  [...new Set(names)].sort((a,b)=>b.length-a.length).forEach(name => {
+    if (!name) return;
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    output = output.replace(new RegExp('\\b'+escaped+'\\b','gi'), () => { c.names++; return '\x00NAME\x01'; });
+  });
+
+  lastPlainOutput = output;
+  const total = Object.values(c).reduce((a,b)=>a+b,0);
+  const other = c.dob + c.postcodes + c.addresses;
+
+  animateStat('statTotal', total);
+  animateStat('statNames', c.names);
+  animateStat('statEmails', c.emails);
+  animateStat('statNHS', c.nhs);
+  animateStat('statPhones', c.phones);
+  animateStat('statOther', other);
+
+  let warnings = 0;
+  const remaining = output.replace(/\x00[A-Z]+\x01/g,'');
+  if (/[a-z0-9._%+\-]+@[a-z0-9.\-]+/i.test(remaining)) warnings++;
+  if (/\b\d{10}\b/.test(remaining)) warnings++;
+  const wc = document.getElementById('warnCell');
+  if (warnings > 0) { wc.style.display=''; animateStat('statWarnings',warnings); } else { wc.style.display='none'; }
+
+  const html = esc(output)
+    .replace(/\x00NAME\x01/g,'<span class="tag-name">[REDACTED]</span>')
+    .replace(/\x00NHS\x01/g,'<span class="tag-nhs">[NHS]</span>')
+    .replace(/\x00EMAIL\x01/g,'<span class="tag-email">[EMAIL]</span>')
+    .replace(/\x00PHONE\x01/g,'<span class="tag-phone">[PHONE]</span>')
+    .replace(/\x00DOB\x01/g,'<span class="tag-dob">[DOB]</span>')
+    .replace(/\x00POSTCODE\x01/g,'<span class="tag-postcode">[POSTCODE]</span>')
+    .replace(/\x00ADDRESS\x01/g,'<span class="tag-address">[ADDRESS]</span>');
+
+  document.getElementById('outputDoc').innerHTML = html;
+  const panel = document.getElementById('outputPanel');
+  panel.classList.add('visible');
+  panel.scrollIntoView({ behavior:'smooth', block:'start' });
+  showToast(`${total} redaction${total!==1?'s':''} applied`);
+}
+
+function animateStat(id, target) {
+  const el = document.getElementById(id);
+  const start = parseInt(el.textContent)||0;
+  if (start===target) { el.textContent=target; return; }
+  const dur=400, t0=performance.now();
+  function tick(now) {
+    const p = Math.min((now-t0)/dur,1), e = 1-Math.pow(1-p,3);
+    el.textContent = Math.round(start+(target-start)*e);
+    if (p<1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+function copyPlain() {
+  const plain = lastPlainOutput
+    .replace(/\x00NAME\x01/g,'[REDACTED]').replace(/\x00NHS\x01/g,'[NHS]')
+    .replace(/\x00EMAIL\x01/g,'[EMAIL]').replace(/\x00PHONE\x01/g,'[PHONE]')
+    .replace(/\x00DOB\x01/g,'[DOB]').replace(/\x00POSTCODE\x01/g,'[POSTCODE]')
+    .replace(/\x00ADDRESS\x01/g,'[ADDRESS]');
+  navigator.clipboard.writeText(plain); showToast('Plain text copied');
+}
+function copyRich() {
+  const html = document.getElementById('outputDoc').innerHTML;
+  navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'})})]);
+  showToast('Formatted text copied');
+}
+
+let toastTimer;
+function showToast(msg) {
+  const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('show'),2000);
+}
+
+function clearAll() {
+  ['ptFirstName','ptSurname','clinicianName','nhsNumber'].forEach(id=>document.getElementById(id).value='');
+  inputEl.value=''; document.getElementById('charCount').textContent='0 characters';
+  document.getElementById('outputPanel').classList.remove('visible');
+  extraNames=[]; renderChips(); showToast('Cleared');
+}
+
+function loadSample() {
+  document.getElementById('ptFirstName').value='James';
+  document.getElementById('ptSurname').value='Whitfield';
+  document.getElementById('clinicianName').value='Dr Elena Marchetti';
+  document.getElementById('nhsNumber').value='943 476 5919';
+  extraNames=['Dr Patel']; renderChips();
+  inputEl.value=`OPA Clinic Letter — Community Mental Health Team
+
+Patient: James Whitfield (NHS: 943 476 5919)
+DOB: 14/03/1985
+Address: 27 Elmwood Drive, London W12 8QT
+
+Dear Dr Patel,
+
+Thank you for referring Mr Whitfield to our service. I reviewed James in clinic today accompanied by his partner. Mr Whitfield reports persistent low mood, anhedonia, and early morning waking over the past 6 months.
+
+James was previously seen by Dr Elena Marchetti at the Hammersmith CMHT in 2022. He was trialled on sertraline 100mg with partial response. His GP can be reached at dr.patel@nhs.net or 020 7946 0958.
+
+Current medications: Sertraline 150mg OD, Zopiclone 7.5mg PRN.
+
+Plan:
+1. Increase sertraline to 200mg
+2. Refer for CBT via IAPT
+3. Review in 6 weeks — Whitfield to contact clinic if deterioration
+4. Copy of this letter sent to james.whitfield@gmail.com
+
+Yours sincerely,
+Dr Elena Marchetti
+Consultant Psychiatrist`;
+  document.getElementById('charCount').textContent=inputEl.value.length.toLocaleString()+' characters';
+  showToast('Sample loaded — hit Redact');
+}
+</script>
+</body>
+</html>
